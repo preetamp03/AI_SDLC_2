@@ -1,0 +1,3319 @@
+```<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.2.0</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.example</groupId>
+    <artifactId>user-auth-messaging</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>user-auth-messaging</name>
+    <description>User Authentication and Messaging API</description>
+    <properties>
+        <java.version>17</java.version>
+        <jjwt.version>0.11.5</jjwt.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-logging</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-log4j2</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- JWT -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- OpenAPI/Swagger -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!-- Test -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+         <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```// src/main/resources/application.properties
+```# Server Configuration
+server.port=8080
+server.servlet.context-path=/api/v1
+
+# Spring Data JPA & H2 Database Configuration
+spring.datasource.url=jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1
+spring.datasource.driverClassName=org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=password
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.h2.console.enabled=true
+
+# Spring Data Redis Configuration
+spring.redis.host=localhost
+spring.redis.port=6379
+
+# JWT Configuration
+jwt.secret=replace-with-a-very-long-and-secure-secret-key-that-is-at-least-256-bits
+jwt.access-token-expiration-ms=3600000 # 1 hour
+jwt.refresh-token-expiration-ms=86400000 # 24 hours
+
+# OTP Configuration
+otp.length=6
+otp.expiration-minutes=5
+
+# Kafka Configuration
+spring.kafka.bootstrap-servers=localhost:9092
+kafka.topic.events=app-events
+
+# Logging
+logging.config=classpath:log4j2.xml
+logging.file.path=./logs
+logging.file.name=app.log
+
+# OpenAPI
+springdoc.api-docs.path=/api-docs
+springdoc.swagger-ui.path=/swagger-ui.html
+```// src/main/resources/log4j2.xml
+```<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="LOG_PATTERN">%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%t] %c{1} - %msg%n</Property>
+        <Property name="LOG_FILE_PATH">${sys:logging.file.path}</Property>
+        <Property name="LOG_FILE_NAME">${sys:logging.file.name}</Property>
+        <Property name="KAFKA_BOOTSTRAP_SERVERS">${sys:spring.kafka.bootstrap-servers}</Property>
+        <Property name="KAFKA_TOPIC">${sys:kafka.topic.events}</Property>
+    </Properties>
+
+    <Appenders>
+        <Console name="ConsoleAppender" target="SYSTEM_OUT">
+            <PatternLayout pattern="${LOG_PATTERN}"/>
+        </Console>
+
+        <RollingFile name="FileAppender"
+                     fileName="${LOG_FILE_PATH}/${LOG_FILE_NAME}"
+                     filePattern="${LOG_FILE_PATH}/app-%d{yyyy-MM-dd}-%i.log.gz">
+            <PatternLayout>
+                <Pattern>${LOG_PATTERN}</Pattern>
+            </PatternLayout>
+            <Policies>
+                <SizeBasedTriggeringPolicy size="10MB"/>
+                <TimeBasedTriggeringPolicy/>
+            </Policies>
+            <DefaultRolloverStrategy max="10"/>
+        </RollingFile>
+
+        <Kafka name="KafkaAppender" topic="${KAFKA_TOPIC}">
+            <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level %c{1} - %m"/>
+            <Property name="bootstrap.servers">${KAFKA_BOOTSTRAP_SERVERS}</Property>
+        </Kafka>
+    </Appenders>
+
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="ConsoleAppender"/>
+            <AppenderRef ref="FileAppender"/>
+        </Root>
+
+        <!-- Logger for event publishing, directs to Kafka -->
+        <Logger name="EventLogger" level="info" additivity="false">
+             <AppenderRef ref="KafkaAppender"/>
+             <AppenderRef ref="ConsoleAppender"/> <!-- also log to console for visibility -->
+        </Logger>
+
+        <Logger name="org.springframework.web" level="info"/>
+        <Logger name="com.example" level="info"/>
+    </Loggers>
+</Configuration>
+```// src/main/java/com/example/Application.java
+```package com.example;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+/**
+ * Main entry point for the Spring Boot application.
+ */
+@SpringBootApplication
+public class Application {
+
+    /**
+     * Main method to run the application.
+     * @param args Command line arguments.
+     */
+    public static void main(String[] args) {
+        SpringApplication.run(Application.class, args);
+    }
+}
+```// src/main/java/com/example/config/OpenApiConfig.java
+```package com.example.config;
+
+import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * Configuration for OpenAPI documentation generation.
+ */
+@Configuration
+@OpenAPIDefinition(info = @Info(title = "User Authentication and Messaging API", version = "1.0.0", description = "API for user authentication via phone/OTP and a simple messaging system."))
+@SecurityScheme(
+    name = "BearerAuth",
+    type = SecuritySchemeType.HTTP,
+    bearerFormat = "JWT",
+    scheme = "bearer"
+)
+public class OpenApiConfig {
+}
+```// src/main/java/com/example/config/RedisConfig.java
+```package com.example.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.repository.configuration.EnableRedisRepositories;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+/**
+ * Configuration for Redis integration.
+ */
+@Configuration
+@EnableRedisRepositories(basePackages = "com.example.repository")
+public class RedisConfig {
+
+    /**
+     * Configures the RedisTemplate bean for interacting with Redis.
+     * @param connectionFactory The Redis connection factory.
+     * @return A configured RedisTemplate.
+     */
+    @Bean
+    public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        template.setKeySerializer(new StringRedisSerializer());
+        // Use Jackson2JsonRedisSerializer for values if objects are complex,
+        // for this case StringRedisSerializer is sufficient.
+        template.setValueSerializer(new StringRedisSerializer());
+        return template;
+    }
+}
+```// src/main/java/com/example/controller/AuthController.java
+```package com.example.controller;
+
+import com.example.dto.auth.InitiateLoginRequest;
+import com.example.dto.auth.InitiateLoginResponse;
+import com.example.dto.auth.VerifyLoginRequest;
+import com.example.dto.auth.VerifyLoginResponse;
+import com.example.logging.LogExecutionTime;
+import com.example.service.AuthService;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Handles HTTP requests for authentication.
+ */
+@RestController
+@RequestMapping("/auth")
+@RequiredArgsConstructor
+@Tag(name = "Authentication")
+public class AuthController {
+
+    private final AuthService authService;
+
+    /**
+     * Handles `POST /auth/login/initiate`. Calls AuthService to validate credentials and trigger OTP.
+     * @param request User credentials for initiating login.
+     * @return A response containing the login attempt ID.
+     */
+    @PostMapping("/login/initiate")
+    @LogExecutionTime
+    public ResponseEntity<InitiateLoginResponse> initiateLogin(@Valid @RequestBody InitiateLoginRequest request) {
+        String loginAttemptId = authService.initiateLogin(request);
+        return ResponseEntity.ok(new InitiateLoginResponse("OTP sent successfully.", loginAttemptId));
+    }
+
+    /**
+     * Handles `POST /auth/login/verify`. Calls AuthService to verify OTP and issue tokens.
+     * @param request The login attempt identifier and the OTP.
+     * @return A response containing access and refresh tokens.
+     */
+    @PostMapping("/login/verify")
+    @LogExecutionTime
+    public ResponseEntity<VerifyLoginResponse> verifyLogin(@Valid @RequestBody VerifyLoginRequest request) {
+        VerifyLoginResponse response = authService.verifyLogin(request);
+        return ResponseEntity.ok(response);
+    }
+}
+```// src/main/java/com/example/controller/MessageController.java
+```package com.example.controller;
+
+import com.example.dto.message.MessageResponse;
+import com.example.dto.message.SendMessageRequest;
+import com.example.logging.LogExecutionTime;
+import com.example.security.AuthenticatedUser;
+import com.example.service.MessageService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+
+/**
+ * Handles HTTP requests for messaging.
+ */
+@RestController
+@RequestMapping("/messages")
+@RequiredArgsConstructor
+@Validated
+@Tag(name = "Messaging")
+@SecurityRequirement(name = "BearerAuth")
+public class MessageController {
+
+    private final MessageService messageService;
+
+    /**
+     * Handles `POST /messages`. Calls MessageService to send a message from the authenticated user.
+     * @param request The message payload.
+     * @param authenticatedUser The currently authenticated user.
+     * @return The created message.
+     */
+    @PostMapping
+    @LogExecutionTime
+    public ResponseEntity<MessageResponse> sendMessage(@Valid @RequestBody SendMessageRequest request,
+                                                       @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+        MessageResponse createdMessage = messageService.createMessage(authenticatedUser.getUserId(), request);
+        return new ResponseEntity<>(createdMessage, HttpStatus.CREATED);
+    }
+
+    /**
+     * Handles `GET /messages`. Calls MessageService to retrieve messages for the authenticated user.
+     * @param search Keyword to search for in message content.
+     * @param sortBy Field to sort by ('timestamp', 'isSeen').
+     * @param sortOrder Sort order ('asc', 'desc').
+     * @param page Page number for pagination.
+     * @param limit Number of items per page.
+     * @param authenticatedUser The currently authenticated user.
+     * @return A paginated list of messages.
+     */
+    @GetMapping
+    @LogExecutionTime
+    public ResponseEntity<Page<MessageResponse>> listMessages(
+        @RequestParam(required = false) String search,
+        @RequestParam(defaultValue = "timestamp") String sortBy,
+        @RequestParam(defaultValue = "desc") String sortOrder,
+        @RequestParam(defaultValue = "0") @Min(0) int page,
+        @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+        @AuthenticationPrincipal AuthenticatedUser authenticatedUser) {
+
+        Sort.Direction direction = Sort.Direction.fromString(sortOrder);
+        Sort sort = Sort.by(direction, sortBy);
+        PageRequest pageable = PageRequest.of(page, limit, sort);
+
+        Page<MessageResponse> messages = messageService.getMessagesForUser(authenticatedUser.getUserId(), search, pageable);
+        return ResponseEntity.ok(messages);
+    }
+}
+```// src/main/java/com/example/dto/auth/InitiateLoginRequest.java
+```package com.example.dto.auth;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class InitiateLoginRequest {
+
+    @NotBlank(message = "Phone number is required.")
+    @Pattern(regexp = "^\\+[1-9]\\d{1,14}$", message = "Phone number must be in E.164 format.")
+    private String phoneNumber;
+
+    @NotBlank(message = "Password is required.")
+    @Size(min = 8, message = "Password must be at least 8 characters long.")
+    private String password;
+}
+```// src/main/java/com/example/dto/auth/InitiateLoginResponse.java
+```package com.example.dto.auth;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class InitiateLoginResponse {
+    private String message;
+    private String loginAttemptId;
+}
+```// src/main/java/com/example/dto/auth/VerifyLoginRequest.java
+```package com.example.dto.auth;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class VerifyLoginRequest {
+
+    @NotBlank(message = "Login attempt ID is required.")
+    @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", message = "Login attempt ID must be a valid UUID.")
+    private String loginAttemptId;
+
+    @NotBlank(message = "OTP is required.")
+    @Size(min = 6, max = 6, message = "OTP must be exactly 6 digits.")
+    @Pattern(regexp = "\\d{6}", message = "OTP must contain only digits.")
+    private String otp;
+}
+```// src/main/java/com/example/dto/auth/VerifyLoginResponse.java
+```package com.example.dto.auth;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class VerifyLoginResponse {
+    private String accessToken;
+    private String refreshToken;
+}
+```// src/main/java/com/example/dto/error/ErrorResponse.java
+```package com.example.dto.error;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ErrorResponse {
+    private String code;
+    private String message;
+}
+```// src/main/java/com/example/dto/message/MessageResponse.java
+```package com.example.dto.message;
+
+import com.example.model.Message;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.Instant;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class MessageResponse {
+
+    private String id;
+    private String senderId;
+    private String recipientId;
+    private String content;
+    private Instant timestamp;
+    private boolean isSeen;
+
+    /**
+     * Creates a MessageResponse DTO from a Message entity.
+     * @param message The message entity.
+     * @return A new MessageResponse DTO.
+     */
+    public static MessageResponse fromEntity(Message message) {
+        return new MessageResponse(
+            message.getId(),
+            message.getSender().getId(),
+            message.getRecipient().getId(),
+            message.getContent(),
+            message.getTimestamp(),
+            message.isSeen()
+        );
+    }
+}
+```// src/main/java/com/example/dto/message/SendMessageRequest.java
+```package com.example.dto.message;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class SendMessageRequest {
+
+    @NotBlank(message = "Recipient ID is required.")
+    @Pattern(regexp = "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", message = "Recipient ID must be a valid UUID.")
+    private String recipientId;
+
+    @NotBlank(message = "Message content cannot be empty.")
+    @Size(max = 1000, message = "Message content cannot exceed 1000 characters.")
+    private String content;
+}
+```// src/main/java/com/example/exception/AppException.java
+```package com.example.exception;
+
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
+
+/**
+ * Base class for custom application exceptions.
+ */
+@Getter
+public class AppException extends RuntimeException {
+    private final HttpStatus status;
+    private final String code;
+
+    public AppException(String message, HttpStatus status, String code) {
+        super(message);
+        this.status = status;
+        this.code = code;
+    }
+}
+```// src/main/java/com/example/exception/BadRequestException.java
+```package com.example.exception;
+
+import org.springframework.http.HttpStatus;
+
+/**
+ * Exception for 400 Bad Request errors.
+ */
+public class BadRequestException extends AppException {
+    public BadRequestException(String message, String code) {
+        super(message, HttpStatus.BAD_REQUEST, code);
+    }
+}
+```// src/main/java/com/example/exception/GlobalExceptionHandler.java
+```package com.example.exception;
+
+import com.example.dto.error.ErrorResponse;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+import java.util.stream.Collectors;
+
+/**
+ * Global handler for application-wide exceptions.
+ */
+@ControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    private static final Logger log = LogManager.getLogger(GlobalExceptionHandler.class);
+
+    /**
+     * Handles custom application exceptions.
+     * @param ex The exception.
+     * @param request The web request.
+     * @return A ResponseEntity containing the error details.
+     */
+    @ExceptionHandler(AppException.class)
+    public ResponseEntity<ErrorResponse> handleAppException(AppException ex, WebRequest request) {
+        log.warn("Application exception: {} (Code: {})", ex.getMessage(), ex.getCode());
+        ErrorResponse errorResponse = new ErrorResponse(ex.getCode(), ex.getMessage());
+        return new ResponseEntity<>(errorResponse, ex.getStatus());
+    }
+
+    /**
+     * Handles validation exceptions from @Valid annotation.
+     * @param ex The exception.
+     * @param headers The HTTP headers.
+     * @param status The HTTP status.
+     * @param request The web request.
+     * @return A ResponseEntity containing the validation error details.
+     */
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(fieldError -> fieldError.getField() + ": " + fieldError.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        log.warn("Validation error: {}", errorMessage);
+        ErrorResponse errorResponse = new ErrorResponse("INVALID_REQUEST_FORMAT", errorMessage);
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
+     * Handles all other unhandled exceptions as a fallback.
+     * @param ex The exception.
+     * @param request The web request.
+     * @return A ResponseEntity for internal server error.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex, WebRequest request) {
+        log.error("An unexpected error occurred", ex);
+        ErrorResponse errorResponse = new ErrorResponse("INTERNAL_SERVER_ERROR", "An unexpected internal server error occurred.");
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+}
+```// src/main/java/com/example/exception/NotFoundException.java
+```package com.example.exception;
+
+import org.springframework.http.HttpStatus;
+
+/**
+ * Exception for 404 Not Found errors.
+ */
+public class NotFoundException extends AppException {
+    public NotFoundException(String message, String code) {
+        super(message, HttpStatus.NOT_FOUND, code);
+    }
+}
+```// src/main/java/com/example/exception/UnauthorizedException.java
+```package com.example.exception;
+
+import org.springframework.http.HttpStatus;
+
+/**
+ * Exception for 401 Unauthorized errors.
+ */
+public class UnauthorizedException extends AppException {
+    public UnauthorizedException(String message, String code) {
+        super(message, HttpStatus.UNAUTHORIZED, code);
+    }
+}
+```// src/main/java/com/example/logging/EventLogger.java
+```package com.example.logging;
+
+/**
+ * Abstracted interface for publishing events to a logging or messaging system like Kafka.
+ */
+public interface EventLogger {
+    /**
+     * Logs or publishes an event message.
+     * @param message The message to log.
+     */
+    void logEvent(String message);
+}
+```// src/main/java/com/example/logging/KafkaEventLogger.java
+```package com.example.logging;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.stereotype.Component;
+
+/**
+ * Kafka implementation for the EventLogger.
+ * This implementation uses a dedicated Log4j2 logger configured with a Kafka appender.
+ */
+@Component
+public class KafkaEventLogger implements EventLogger {
+
+    private static final Logger eventLogger = LogManager.getLogger("EventLogger");
+
+    /**
+     * Logs an event message to the configured Kafka topic via Log4j2.
+     * @param message The message to log.
+     */
+    @Override
+    public void logEvent(String message) {
+        eventLogger.info(message);
+    }
+}
+```// src/main/java/com/example/logging/LogExecutionTime.java
+```package com.example.logging;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Annotation to mark methods for execution time logging.
+ */
+@Target(ElementType.METHOD)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface LogExecutionTime {
+}
+```// src/main/java/com/example/logging/LoggingAspect.java
+```package com.example.logging;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
+import org.aspectj.lang.annotation.Aspect;
+import org.springframework.stereotype.Component;
+
+/**
+ * AOP Aspect for logging method execution time.
+ */
+@Aspect
+@Component
+public class LoggingAspect {
+
+    private static final Logger log = LogManager.getLogger(LoggingAspect.class);
+
+    /**
+     * Logs the execution time of any method annotated with @LogExecutionTime.
+     * @param joinPoint The proceeding join point.
+     * @return The result of the method execution.
+     * @throws Throwable if the method throws an exception.
+     */
+    @Around("@annotation(com.example.logging.LogExecutionTime)")
+    public Object logExecutionTime(ProceedingJoinPoint joinPoint) throws Throwable {
+        long startTime = System.currentTimeMillis();
+        Object proceed = joinPoint.proceed();
+        long endTime = System.currentTimeMillis();
+        log.info("{} executed in {} ms", joinPoint.getSignature(), (endTime - startTime));
+        return proceed;
+    }
+}
+```// src/main/java/com/example/model/LoginAttempt.java
+```package com.example.model;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.redis.core.RedisHash;
+import org.springframework.data.redis.core.TimeToLive;
+
+import java.util.concurrent.TimeUnit;
+
+/**
+ * Represents a temporary record of a login attempt, stored in Redis.
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@RedisHash("LoginAttempt")
+public class LoginAttempt {
+
+    @Id
+    private String id; // UUID for the login attempt
+
+    private String userId;
+
+    private String otpHash;
+
+    @TimeToLive(unit = TimeUnit.MINUTES)
+    private Long expiration; // TTL in minutes
+}
+```// src/main/java/com/example/model/Message.java
+```package com.example.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.Instant;
+
+/**
+ * Represents a message sent between users.
+ */
+@Entity
+@Table(name = "messages")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Message {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id", nullable = false)
+    private User sender;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipient_id", nullable = false)
+    private User recipient;
+
+    @Column(nullable = false, length = 1000)
+    private String content;
+
+    @Column(nullable = false)
+    private Instant timestamp;
+
+    @Column(nullable = false)
+    private boolean isSeen = false;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
+}
+```// src/main/java/com/example/model/User.java
+```package com.example.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.Instant;
+
+/**
+ * Represents a user in the system.
+ */
+@Entity
+@Table(name = "app_users")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
+
+    @Column(unique = true, nullable = false)
+    private String phoneNumber;
+
+    @Column(nullable = false)
+    private String password; // Should be passwordHash in a real app
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    private Instant updatedAt;
+}
+```// src/main/java/com/example/repository/LoginAttemptRepository.java
+```package com.example.repository;
+
+import com.example.model.LoginAttempt;
+import org.springframework.data.repository.CrudRepository;
+import org.springframework.stereotype.Repository;
+
+/**
+ * Data access abstraction for temporary login attempt data in Redis.
+ */
+@Repository
+public interface LoginAttemptRepository extends CrudRepository<LoginAttempt, String> {
+}
+```// src/main/java/com/example/repository/MessageRepository.java
+```package com.example.repository;
+
+import com.example.model.Message;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+/**
+ * Data access abstraction for Message entities.
+ */
+@Repository
+public interface MessageRepository extends JpaRepository<Message, String> {
+
+    /**
+     * Finds messages for a user, with optional content search and pagination.
+     * This query finds all messages where the user is either the sender or the recipient.
+     * @param userId The ID of the user.
+     * @param searchTerm The term to search for in the message content (can be null or empty).
+     * @param pageable Pagination and sorting information.
+     * @return A page of messages.
+     */
+    @Query("SELECT m FROM Message m WHERE (m.sender.id = :userId OR m.recipient.id = :userId) AND (:searchTerm IS NULL OR lower(m.content) LIKE lower(concat('%', :searchTerm, '%')))")
+    Page<Message> findMessagesForUser(@Param("userId") String userId, @Param("searchTerm") String searchTerm, Pageable pageable);
+}
+```// src/main/java/com/example/repository/UserRepository.java
+```package com.example.repository;
+
+import com.example.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Data access abstraction for User entities.
+ */
+@Repository
+public interface UserRepository extends JpaRepository<User, String> {
+
+    /**
+     * Finds a user by their phone number.
+     * @param phoneNumber The phone number to search for.
+     * @return An Optional containing the user if found.
+     */
+    Optional<User> findByPhoneNumber(String phoneNumber);
+}
+```// src/main/java/com/example/security/AuthenticatedUser.java
+```package com.example.security;
+
+import lombok.Getter;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.User;
+
+import java.util.Collections;
+
+/**
+ * Represents the authenticated user, extracted from a JWT.
+ */
+@Getter
+public class AuthenticatedUser extends User {
+
+    private final String userId;
+
+    /**
+     * Constructs the AuthenticatedUser principal.
+     * @param userId The unique ID of the user.
+     * @param username The username (phone number).
+     */
+    public AuthenticatedUser(String userId, String username) {
+        super(username, "", Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+        this.userId = userId;
+    }
+}
+```// src/main/java/com/example/security/CustomUserDetailsService.java
+```package com.example.security;
+
+import com.example.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.stereotype.Service;
+
+/**
+ * Service to load user-specific data for Spring Security.
+ */
+@Service
+@RequiredArgsConstructor
+public class CustomUserDetailsService implements UserDetailsService {
+
+    private final UserRepository userRepository;
+
+    /**
+     * Loads a user by their username (in this case, user ID from JWT).
+     * @param userId The ID of the user to load.
+     * @return UserDetails object for the authenticated user.
+     * @throws UsernameNotFoundException if the user is not found.
+     */
+    @Override
+    public UserDetails loadUserByUsername(String userId) throws UsernameNotFoundException {
+        com.example.model.User user = userRepository.findById(userId)
+            .orElseThrow(() -> new UsernameNotFoundException("User not found with id: " + userId));
+
+        return new AuthenticatedUser(user.getId(), user.getPhoneNumber());
+    }
+}
+```// src/main/java/com/example/security/JwtAuthenticationFilter.java
+```package com.example.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.lang.NonNull;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+/**
+ * Filter to process JWTs from requests and set authentication in the SecurityContext.
+ */
+@Component
+@RequiredArgsConstructor
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LogManager.getLogger(JwtAuthenticationFilter.class);
+    private final JwtTokenProvider tokenProvider;
+    private final UserDetailsService userDetailsService;
+
+    /**
+     * Filters incoming requests to check for a JWT in the Authorization header.
+     * @param request The HTTP request.
+     * @param response The HTTP response.
+     * @param filterChain The filter chain.
+     * @throws ServletException if a servlet-specific error occurs.
+     * @throws IOException if an I/O error occurs.
+     */
+    @Override
+    protected void doFilterInternal(@NonNull HttpServletRequest request,
+                                    @NonNull HttpServletResponse response,
+                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+        try {
+            String jwt = getJwtFromRequest(request);
+
+            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
+                String userId = tokenProvider.getUserIdFromJWT(jwt);
+
+                UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+                UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                    userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        } catch (Exception ex) {
+            log.error("Could not set user authentication in security context", ex);
+        }
+
+        filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Extracts the JWT from the Authorization header.
+     * @param request The HTTP request.
+     * @return The JWT string, or null if not found.
+     */
+    private String getJwtFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        return null;
+    }
+}
+```// src/main/java/com/example/security/JwtTokenProvider.java
+```package com.example.security;
+
+import com.example.model.User;
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import jakarta.annotation.PostConstruct;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+
+/**
+ * Component for generating and validating JWT tokens.
+ */
+@Component
+public class JwtTokenProvider {
+
+    private static final Logger log = LogManager.getLogger(JwtTokenProvider.class);
+
+    @Value("${jwt.secret}")
+    private String jwtSecret;
+
+    @Value("${jwt.access-token-expiration-ms}")
+    private long jwtAccessExpirationInMs;
+
+    @Value("${jwt.refresh-token-expiration-ms}")
+    private long jwtRefreshExpirationInMs;
+
+    private SecretKey key;
+
+    /**
+     * Initializes the secret key after dependency injection.
+     */
+    @PostConstruct
+    public void init() {
+        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+    }
+
+    /**
+     * Generates a pair of access and refresh tokens for a user.
+     * @param user The user for whom to generate tokens.
+     * @return An object containing the access and refresh tokens.
+     */
+    public TokenPair generateTokenPair(User user) {
+        String accessToken = generateToken(user.getId(), jwtAccessExpirationInMs);
+        String refreshToken = generateToken(user.getId(), jwtRefreshExpirationInMs);
+        return new TokenPair(accessToken, refreshToken);
+    }
+
+    /**
+     * Extracts the user ID from a JWT.
+     * @param token The JWT.
+     * @return The user ID.
+     */
+    public String getUserIdFromJWT(String token) {
+        Claims claims = Jwts.parserBuilder()
+            .setSigningKey(key)
+            .build()
+            .parseClaimsJws(token)
+            .getBody();
+
+        return claims.getSubject();
+    }
+
+    /**
+     * Validates the integrity and expiration of a JWT.
+     * @param authToken The JWT to validate.
+     * @return true if the token is valid, false otherwise.
+     */
+    public boolean validateToken(String authToken) {
+        try {
+            Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(authToken);
+            return true;
+        } catch (SignatureException ex) {
+            log.error("Invalid JWT signature");
+        } catch (MalformedJwtException ex) {
+            log.error("Invalid JWT token");
+        } catch (ExpiredJwtException ex) {
+            log.error("Expired JWT token");
+        } catch (UnsupportedJwtException ex) {
+            log.error("Unsupported JWT token");
+        } catch (IllegalArgumentException ex) {
+            log.error("JWT claims string is empty.");
+        }
+        return false;
+    }
+
+    /**
+     * Helper to generate a single token.
+     */
+    private String generateToken(String userId, long expirationInMs) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationInMs);
+
+        return Jwts.builder()
+            .setSubject(userId)
+            .setIssuedAt(now)
+            .setExpiration(expiryDate)
+            .signWith(key, SignatureAlgorithm.HS512)
+            .compact();
+    }
+
+    /**
+     * A simple record to hold a pair of tokens.
+     */
+    public record TokenPair(String accessToken, String refreshToken) {}
+}
+```// src/main/java/com/example/security/SecurityConfig.java
+```package com.example.security;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+/**
+ * Configures application security, including protected routes and authentication mechanisms.
+ */
+@Configuration
+@EnableWebSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomUserDetailsService customUserDetailsService;
+
+    /**
+     * Defines the password encoder bean.
+     * @return A BCryptPasswordEncoder instance.
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * Defines the authentication manager bean.
+     * @param authenticationConfiguration The authentication configuration.
+     * @return The AuthenticationManager instance.
+     * @throws Exception if an error occurs.
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    /**
+     * Configures the security filter chain, defining public and protected endpoints.
+     * @param http The HttpSecurity object to configure.
+     * @return The configured SecurityFilterChain.
+     * @throws Exception if an error occurs during configuration.
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/v1/auth/**", "/swagger-ui/**", "/v3/api-docs/**", "/api-docs/**", "/swagger-ui.html").permitAll()
+                .anyRequest().authenticated()
+            );
+
+        http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+}
+```// src/main/java/com/example/service/AuthService.java
+```package com.example.service;
+
+import com.example.dto.auth.InitiateLoginRequest;
+import com.example.dto.auth.VerifyLoginRequest;
+import com.example.dto.auth.VerifyLoginResponse;
+import com.example.exception.BadRequestException;
+import com.example.exception.NotFoundException;
+import com.example.exception.UnauthorizedException;
+import com.example.logging.EventLogger;
+import com.example.model.LoginAttempt;
+import com.example.model.User;
+import com.example.repository.LoginAttemptRepository;
+import com.example.security.JwtTokenProvider;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+
+/**
+ * Implements the business logic for user authentication.
+ */
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserService userService;
+    private final OtpService otpService;
+    private final LoginAttemptRepository loginAttemptRepository;
+    private final JwtTokenProvider tokenProvider;
+    private final PasswordEncoder passwordEncoder;
+    private final EventLogger eventLogger;
+
+    /**
+     * Initiates the login process by validating credentials and sending an OTP.
+     * @param request The login initiation request.
+     * @return The unique ID for the login attempt.
+     */
+    @Transactional
+    public String initiateLogin(InitiateLoginRequest request) {
+        User user = userService.findByPhoneNumber(request.getPhoneNumber())
+            .orElseThrow(() -> new UnauthorizedException("Invalid credentials.", "INVALID_CREDENTIALS"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            eventLogger.logEvent("Failed login attempt for user: " + user.getId());
+            throw new UnauthorizedException("Invalid credentials.", "INVALID_CREDENTIALS");
+        }
+
+        String loginAttemptId = otpService.generateAndSendOtp(user);
+        eventLogger.logEvent("Login initiated for user: " + user.getId());
+        return loginAttemptId;
+    }
+
+    /**
+     * Verifies the provided OTP and issues JWTs upon success.
+     * @param request The login verification request.
+     * @return A response containing access and refresh tokens.
+     */
+    @Transactional
+    public VerifyLoginResponse verifyLogin(VerifyLoginRequest request) {
+        LoginAttempt attempt = loginAttemptRepository.findById(request.getLoginAttemptId())
+            .orElseThrow(() -> new NotFoundException("Login attempt not found or expired.", "LOGIN_ATTEMPT_NOT_FOUND"));
+
+        if (!passwordEncoder.matches(request.getOtp(), attempt.getOtpHash())) {
+            eventLogger.logEvent("Invalid OTP for login attempt: " + request.getLoginAttemptId());
+            throw new BadRequestException("Invalid or expired OTP.", "INVALID_OTP");
+        }
+
+        User user = userService.findById(attempt.getUserId())
+            .orElseThrow(() -> new NotFoundException("User associated with login attempt not found.", "USER_NOT_FOUND"));
+
+        // OTP is valid, generate tokens and clean up
+        JwtTokenProvider.TokenPair tokenPair = tokenProvider.generateTokenPair(user);
+        loginAttemptRepository.deleteById(attempt.getId()); // One-time use
+
+        eventLogger.logEvent("Login successful for user: " + user.getId());
+
+        return new VerifyLoginResponse(tokenPair.accessToken(), tokenPair.refreshToken());
+    }
+}
+```// src/main/java/com/example/service/MessageService.java
+```package com.example.service;
+
+import com.example.dto.message.MessageResponse;
+import com.example.dto.message.SendMessageRequest;
+import com.example.exception.BadRequestException;
+import com.example.exception.NotFoundException;
+import com.example.logging.EventLogger;
+import com.example.model.Message;
+import com.example.model.User;
+import com.example.repository.MessageRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+
+/**
+ * Implements the business logic for messaging.
+ */
+@Service
+@RequiredArgsConstructor
+public class MessageService {
+
+    private final MessageRepository messageRepository;
+    private final UserService userService;
+    private final EventLogger eventLogger;
+
+    /**
+     * Creates and stores a new message.
+     * @param senderId The ID of the user sending the message.
+     * @param request The request DTO containing message details.
+     * @return The created message as a DTO.
+     */
+    @Transactional
+    public MessageResponse createMessage(String senderId, SendMessageRequest request) {
+        if (senderId.equals(request.getRecipientId())) {
+            throw new BadRequestException("Cannot send a message to yourself.", "CANNOT_MESSAGE_SELF");
+        }
+
+        User sender = userService.findById(senderId)
+            .orElseThrow(() -> new NotFoundException("Sender not found.", "SENDER_NOT_FOUND"));
+        User recipient = userService.findById(request.getRecipientId())
+            .orElseThrow(() -> new NotFoundException("Recipient not found.", "RECIPIENT_NOT_FOUND"));
+
+        Message message = new Message();
+        message.setSender(sender);
+        message.setRecipient(recipient);
+        message.setContent(request.getContent());
+        message.setTimestamp(Instant.now());
+        message.setSeen(false);
+
+        Message savedMessage = messageRepository.save(message);
+        eventLogger.logEvent(String.format("Message sent from %s to %s", senderId, request.getRecipientId()));
+
+        return MessageResponse.fromEntity(savedMessage);
+    }
+
+    /**
+     * Retrieves messages for a user based on query parameters.
+     * @param userId The ID of the user whose messages to retrieve.
+     * @param search An optional search term to filter messages by content.
+     * @param pageable Pagination and sorting information.
+     * @return A page of messages.
+     */
+    @Transactional(readOnly = true)
+    public Page<MessageResponse> getMessagesForUser(String userId, String search, Pageable pageable) {
+        Page<Message> messagePage = messageRepository.findMessagesForUser(userId, search, pageable);
+        return messagePage.map(MessageResponse::fromEntity);
+    }
+}
+```// src/main/java/com/example/service/OtpService.java
+```package com.example.service;
+
+import com.example.exception.AppException;
+import com.example.logging.EventLogger;
+import com.example.model.LoginAttempt;
+import com.example.model.User;
+import com.example.repository.LoginAttemptRepository;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.security.SecureRandom;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+/**
+ * Service for generating, storing, and sending One-Time Passwords (OTPs).
+ */
+@Service
+public class OtpService {
+
+    private static final Logger log = LogManager.getLogger(OtpService.class);
+    private static final SecureRandom secureRandom = new SecureRandom();
+
+    private final LoginAttemptRepository loginAttemptRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final EventLogger eventLogger;
+    private final int otpLength;
+    private final long otpExpirationMinutes;
+
+    public OtpService(LoginAttemptRepository loginAttemptRepository,
+                      PasswordEncoder passwordEncoder,
+                      EventLogger eventLogger,
+                      @Value("${otp.length}") int otpLength,
+                      @Value("${otp.expiration-minutes}") long otpExpirationMinutes) {
+        this.loginAttemptRepository = loginAttemptRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.eventLogger = eventLogger;
+        this.otpLength = otpLength;
+        this.otpExpirationMinutes = otpExpirationMinutes;
+    }
+
+    /**
+     * Generates an OTP, stores it, and simulates sending it.
+     * @param user The user for whom to generate the OTP.
+     * @return The ID of the created login attempt.
+     */
+    public String generateAndSendOtp(User user) {
+        String otp = generateOtp();
+        String loginAttemptId = storeOtp(user.getId(), otp);
+        sendOtp(user.getPhoneNumber(), otp);
+        return loginAttemptId;
+    }
+
+    /**
+     * Generates a numeric OTP of a configured length.
+     * @return The generated OTP string.
+     */
+    private String generateOtp() {
+        return IntStream.range(0, otpLength)
+            .map(i -> secureRandom.nextInt(10))
+            .mapToObj(String::valueOf)
+            .collect(Collectors.joining());
+    }
+
+    /**
+     * Stores the hashed OTP in Redis with an expiration.
+     * @param userId The ID of the user attempting to log in.
+     * @param otp The plaintext OTP.
+     * @return The ID of the login attempt.
+     */
+    private String storeOtp(String userId, String otp) {
+        String otpHash = passwordEncoder.encode(otp);
+        String attemptId = UUID.randomUUID().toString();
+
+        LoginAttempt attempt = new LoginAttempt(attemptId, userId, otpHash, otpExpirationMinutes);
+        loginAttemptRepository.save(attempt);
+        return attemptId;
+    }
+
+    /**
+     * Simulates sending the OTP to a user's phone.
+     * In a real application, this would integrate with an SMS gateway like Twilio.
+     * @param phoneNumber The recipient's phone number.
+     * @param otp The OTP to send.
+     */
+    private void sendOtp(String phoneNumber, String otp) {
+        try {
+            // Simulate API call to an external SMS gateway
+            log.info("---- OTP SIMULATION ----");
+            log.info("Sending OTP {} to phone number {}", otp, phoneNumber);
+            log.info("---- END SIMULATION ----");
+            eventLogger.logEvent("OTP sent to " + phoneNumber);
+        } catch (Exception e) {
+            log.error("Failed to send OTP to {}", phoneNumber, e);
+            throw new AppException("Failed to send OTP.", HttpStatus.INTERNAL_SERVER_ERROR, "OTP_SEND_FAILED");
+        }
+    }
+}
+```// src/main/java/com/example/service/UserService.java
+```package com.example.service;
+
+import com.example.model.User;
+import com.example.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.Optional;
+
+/**
+ * Service for user-related data operations.
+ */
+@Service
+@RequiredArgsConstructor
+public class UserService {
+
+    private final UserRepository userRepository;
+
+    /**
+     * Finds a user by their phone number.
+     * @param phoneNumber The phone number to search for.
+     * @return An Optional containing the user if found.
+     */
+    public Optional<User> findByPhoneNumber(String phoneNumber) {
+        return userRepository.findByPhoneNumber(phoneNumber);
+    }
+
+    /**
+     * Finds a user by their unique ID.
+     * @param id The ID of the user.
+     * @return An Optional containing the user if found.
+     */
+    public Optional<User> findById(String id) {
+        return userRepository.findById(id);
+    }
+}
+```// src/test/java/com/example/ApplicationTest.java
+```package com.example;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+/**
+ * Unit test for the main Application class.
+ */
+@SpringBootTest
+class ApplicationTest {
+
+    /**
+     * Test to ensure the application context loads without errors.
+     */
+    @Test
+    void contextLoads() {
+        // This test will pass if the application context loads successfully.
+    }
+
+    /**
+     * Test to ensure the main method runs without throwing an exception.
+     */
+    @Test
+    void main() {
+        Application.main(new String[]{});
+    }
+}
+```// src/test/java/com/example/config/OpenApiConfigTest.java
+```package com.example.config;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the OpenApiConfig class.
+ */
+@SpringBootTest(classes = OpenApiConfig.class)
+class OpenApiConfigTest {
+
+    @Autowired
+    private ApplicationContext context;
+
+    /**
+     * Test to ensure the OpenApiConfig bean is loaded into the Spring context.
+     */
+    @Test
+    void openApiConfigBeanIsLoaded() {
+        assertThat(context.getBean(OpenApiConfig.class)).isNotNull();
+    }
+}
+```// src/test/java/com/example/config/RedisConfigTest.java
+```package com.example.config;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.core.RedisTemplate;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+/**
+ * Unit test for the RedisConfig class.
+ */
+@ExtendWith(MockitoExtension.class)
+class RedisConfigTest {
+
+    @InjectMocks
+    private RedisConfig redisConfig;
+
+    @Mock
+    private RedisConnectionFactory connectionFactory;
+
+    /**
+     * Test to verify that the redisTemplate bean is configured correctly.
+     */
+    @Test
+    void testRedisTemplateBeanConfiguration() {
+        // When
+        RedisTemplate<String, Object> redisTemplate = redisConfig.redisTemplate(connectionFactory);
+
+        // Then
+        assertThat(redisTemplate).isNotNull();
+        assertThat(redisTemplate.getConnectionFactory()).isEqualTo(connectionFactory);
+        assertThat(redisTemplate.getKeySerializer()).isNotNull();
+        assertThat(redisTemplate.getValueSerializer()).isNotNull();
+    }
+}
+```// src/test/java/com/example/controller/AuthControllerTest.java
+```package com.example.controller;
+
+import com.example.dto.auth.InitiateLoginRequest;
+import com.example.dto.auth.VerifyLoginRequest;
+import com.example.dto.auth.VerifyLoginResponse;
+import com.example.service.AuthService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(AuthController.class)
+class AuthControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private AuthService authService;
+
+    /**
+     * Test for the initiateLogin endpoint with valid data.
+     */
+    @Test
+    void initiateLogin_shouldReturnLoginAttemptId() throws Exception {
+        InitiateLoginRequest request = new InitiateLoginRequest("+14155552671", "password123");
+        String loginAttemptId = UUID.randomUUID().toString();
+        when(authService.initiateLogin(any(InitiateLoginRequest.class))).thenReturn(loginAttemptId);
+
+        mockMvc.perform(post("/auth/login/initiate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.message").value("OTP sent successfully."))
+            .andExpect(jsonPath("$.loginAttemptId").value(loginAttemptId));
+    }
+
+    /**
+     * Test for the verifyLogin endpoint with valid data.
+     */
+    @Test
+    void verifyLogin_shouldReturnTokens() throws Exception {
+        VerifyLoginRequest request = new VerifyLoginRequest(UUID.randomUUID().toString(), "123456");
+        VerifyLoginResponse response = new VerifyLoginResponse("access-token", "refresh-token");
+        when(authService.verifyLogin(any(VerifyLoginRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/auth/login/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.accessToken").value("access-token"))
+            .andExpect(jsonPath("$.refreshToken").value("refresh-token"));
+    }
+}
+```// src/test/java/com/example/controller/MessageControllerTest.java
+```package com.example.controller;
+
+import com.example.dto.message.MessageResponse;
+import com.example.dto.message.SendMessageRequest;
+import com.example.security.AuthenticatedUser;
+import com.example.security.JwtAuthenticationFilter;
+import com.example.service.MessageService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Instant;
+import java.util.Collections;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@WebMvcTest(MessageController.class)
+@AutoConfigureMockMvc(addFilters = false) // Disable spring security filters for this test
+class MessageControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private MessageService messageService;
+
+    // Mock the filter to prevent it from running
+    @MockBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    
+    private final String SENDER_ID = UUID.randomUUID().toString();
+    private final AuthenticatedUser sender = new AuthenticatedUser(SENDER_ID, "+15551234567");
+
+
+    /**
+     * Test for sendMessage endpoint with valid data.
+     */
+    @Test
+    @WithMockUser // provides a mock SecurityContext
+    void sendMessage_shouldReturnCreatedMessage() throws Exception {
+        String recipientId = UUID.randomUUID().toString();
+        SendMessageRequest request = new SendMessageRequest(recipientId, "Hello!");
+        MessageResponse response = new MessageResponse(UUID.randomUUID().toString(), SENDER_ID, recipientId, "Hello!", Instant.now(), false);
+
+        when(messageService.createMessage(eq(SENDER_ID), any(SendMessageRequest.class))).thenReturn(response);
+
+        mockMvc.perform(post("/messages")
+                .with(authentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(sender, null, sender.getAuthorities())))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.content").value("Hello!"))
+            .andExpect(jsonPath("$.senderId").value(SENDER_ID));
+    }
+
+    /**
+     * Test for listMessages endpoint.
+     */
+    @Test
+    @WithMockUser
+    void listMessages_shouldReturnPageOfMessages() throws Exception {
+        MessageResponse message = new MessageResponse(UUID.randomUUID().toString(), SENDER_ID, UUID.randomUUID().toString(), "A message", Instant.now(), false);
+        Page<MessageResponse> page = new PageImpl<>(Collections.singletonList(message));
+
+        when(messageService.getMessagesForUser(eq(SENDER_ID), any(), any(PageRequest.class))).thenReturn(page);
+
+        mockMvc.perform(get("/messages")
+                .with(authentication(new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(sender, null, sender.getAuthorities())))
+                .param("page", "0")
+                .param("limit", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content[0].content").value("A message"))
+            .andExpect(jsonPath("$.totalElements").value(1));
+    }
+}
+```// src/test/java/com/example/dto/auth/InitiateLoginRequestTest.java
+```package com.example.dto.auth;
+
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the InitiateLoginRequest DTO.
+ */
+class InitiateLoginRequestTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String phoneNumber = "+14155552671";
+        String password = "password123";
+
+        // When
+        InitiateLoginRequest request1 = new InitiateLoginRequest();
+        request1.setPhoneNumber(phoneNumber);
+        request1.setPassword(password);
+
+        InitiateLoginRequest request2 = new InitiateLoginRequest(phoneNumber, password);
+
+        // Then
+        assertThat(request1.getPhoneNumber()).isEqualTo(phoneNumber);
+        assertThat(request1.getPassword()).isEqualTo(password);
+        assertThat(request2.getPhoneNumber()).isEqualTo(phoneNumber);
+        assertThat(request2.getPassword()).isEqualTo(password);
+        assertThat(request1).isEqualTo(request2);
+        assertThat(request1.hashCode()).isEqualTo(request2.hashCode());
+        assertThat(request1.toString()).contains(phoneNumber);
+    }
+}
+```// src/test/java/com/example/dto/auth/InitiateLoginResponseTest.java
+```package com.example.dto.auth;
+
+import org.junit.jupiter.api.Test;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the InitiateLoginResponse DTO.
+ */
+class InitiateLoginResponseTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String message = "OTP sent.";
+        String loginAttemptId = UUID.randomUUID().toString();
+
+        // When
+        InitiateLoginResponse response1 = new InitiateLoginResponse();
+        response1.setMessage(message);
+        response1.setLoginAttemptId(loginAttemptId);
+
+        InitiateLoginResponse response2 = new InitiateLoginResponse(message, loginAttemptId);
+
+        // Then
+        assertThat(response1.getMessage()).isEqualTo(message);
+        assertThat(response1.getLoginAttemptId()).isEqualTo(loginAttemptId);
+        assertThat(response2.getMessage()).isEqualTo(message);
+        assertThat(response2.getLoginAttemptId()).isEqualTo(loginAttemptId);
+        assertThat(response1).isEqualTo(response2);
+    }
+}
+```// src/test/java/com/example/dto/auth/VerifyLoginRequestTest.java
+```package com.example.dto.auth;
+
+import org.junit.jupiter.api.Test;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the VerifyLoginRequest DTO.
+ */
+class VerifyLoginRequestTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String loginAttemptId = UUID.randomUUID().toString();
+        String otp = "123456";
+
+        // When
+        VerifyLoginRequest request1 = new VerifyLoginRequest();
+        request1.setLoginAttemptId(loginAttemptId);
+        request1.setOtp(otp);
+
+        VerifyLoginRequest request2 = new VerifyLoginRequest(loginAttemptId, otp);
+
+        // Then
+        assertThat(request1.getLoginAttemptId()).isEqualTo(loginAttemptId);
+        assertThat(request1.getOtp()).isEqualTo(otp);
+        assertThat(request2.getLoginAttemptId()).isEqualTo(loginAttemptId);
+        assertThat(request2.getOtp()).isEqualTo(otp);
+        assertThat(request1).isEqualTo(request2);
+    }
+}
+```// src/test/java/com/example/dto/auth/VerifyLoginResponseTest.java
+```package com.example.dto.auth;
+
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the VerifyLoginResponse DTO.
+ */
+class VerifyLoginResponseTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String accessToken = "access.token.string";
+        String refreshToken = "refresh.token.string";
+
+        // When
+        VerifyLoginResponse response1 = new VerifyLoginResponse();
+        response1.setAccessToken(accessToken);
+        response1.setRefreshToken(refreshToken);
+
+        VerifyLoginResponse response2 = new VerifyLoginResponse(accessToken, refreshToken);
+
+        // Then
+        assertThat(response1.getAccessToken()).isEqualTo(accessToken);
+        assertThat(response1.getRefreshToken()).isEqualTo(refreshToken);
+        assertThat(response2.getAccessToken()).isEqualTo(accessToken);
+        assertThat(response2.getRefreshToken()).isEqualTo(refreshToken);
+        assertThat(response1).isEqualTo(response2);
+    }
+}
+```// src/test/java/com/example/dto/error/ErrorResponseTest.java
+```package com.example.dto.error;
+
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the ErrorResponse DTO.
+ */
+class ErrorResponseTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String code = "ERROR_CODE";
+        String message = "An error occurred.";
+
+        // When
+        ErrorResponse response1 = new ErrorResponse();
+        response1.setCode(code);
+        response1.setMessage(message);
+
+        ErrorResponse response2 = new ErrorResponse(code, message);
+
+        // Then
+        assertThat(response1.getCode()).isEqualTo(code);
+        assertThat(response1.getMessage()).isEqualTo(message);
+        assertThat(response2.getCode()).isEqualTo(code);
+        assertThat(response2.getMessage()).isEqualTo(message);
+        assertThat(response1).isEqualTo(response2);
+    }
+}
+```// src/test/java/com/example/dto/message/MessageResponseTest.java
+```package com.example.dto.message;
+
+import com.example.model.Message;
+import com.example.model.User;
+import org.junit.jupiter.api.Test;
+import java.time.Instant;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the MessageResponse DTO.
+ */
+class MessageResponseTest {
+
+    /**
+     * Test the fromEntity factory method.
+     */
+    @Test
+    void testFromEntity() {
+        // Given
+        User sender = new User(UUID.randomUUID().toString(), "phone1", "pass", null, null);
+        User recipient = new User(UUID.randomUUID().toString(), "phone2", "pass", null, null);
+        Message message = new Message(UUID.randomUUID().toString(), sender, recipient, "Hello", Instant.now(), false, Instant.now());
+
+        // When
+        MessageResponse dto = MessageResponse.fromEntity(message);
+
+        // Then
+        assertThat(dto.getId()).isEqualTo(message.getId());
+        assertThat(dto.getSenderId()).isEqualTo(sender.getId());
+        assertThat(dto.getRecipientId()).isEqualTo(recipient.getId());
+        assertThat(dto.getContent()).isEqualTo(message.getContent());
+        assertThat(dto.getTimestamp()).isEqualTo(message.getTimestamp());
+        assertThat(dto.isSeen()).isEqualTo(message.isSeen());
+    }
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String id = UUID.randomUUID().toString();
+        String senderId = UUID.randomUUID().toString();
+        String recipientId = UUID.randomUUID().toString();
+        String content = "Test content";
+        Instant timestamp = Instant.now();
+        boolean isSeen = true;
+
+        // When
+        MessageResponse dto = new MessageResponse(id, senderId, recipientId, content, timestamp, isSeen);
+
+        // Then
+        assertThat(dto.getId()).isEqualTo(id);
+        assertThat(dto.getSenderId()).isEqualTo(senderId);
+        assertThat(dto.getRecipientId()).isEqualTo(recipientId);
+        assertThat(dto.getContent()).isEqualTo(content);
+        assertThat(dto.getTimestamp()).isEqualTo(timestamp);
+        assertThat(dto.isSeen()).isEqualTo(isSeen);
+    }
+}
+```// src/test/java/com/example/dto/message/SendMessageRequestTest.java
+```package com.example.dto.message;
+
+import org.junit.jupiter.api.Test;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the SendMessageRequest DTO.
+ */
+class SendMessageRequestTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String recipientId = UUID.randomUUID().toString();
+        String content = "Hello there!";
+
+        // When
+        SendMessageRequest request1 = new SendMessageRequest();
+        request1.setRecipientId(recipientId);
+        request1.setContent(content);
+
+        SendMessageRequest request2 = new SendMessageRequest(recipientId, content);
+
+        // Then
+        assertThat(request1.getRecipientId()).isEqualTo(recipientId);
+        assertThat(request1.getContent()).isEqualTo(content);
+        assertThat(request2.getRecipientId()).isEqualTo(recipientId);
+        assertThat(request2.getContent()).isEqualTo(content);
+        assertThat(request1).isEqualTo(request2);
+    }
+}
+```// src/test/java/com/example/exception/AppExceptionTest.java
+```package com.example.exception;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the AppException class.
+ */
+class AppExceptionTest {
+
+    /**
+     * Test the constructor and getters of the exception.
+     */
+    @Test
+    void testExceptionCreation() {
+        // Given
+        String message = "Test exception";
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+        String code = "TEST_ERROR";
+
+        // When
+        AppException ex = new AppException(message, status, code);
+
+        // Then
+        assertThat(ex.getMessage()).isEqualTo(message);
+        assertThat(ex.getStatus()).isEqualTo(status);
+        assertThat(ex.getCode()).isEqualTo(code);
+    }
+}
+```// src/test/java/com/example/exception/BadRequestExceptionTest.java
+```package com.example.exception;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the BadRequestException class.
+ */
+class BadRequestExceptionTest {
+
+    /**
+     * Test that the exception is created with the correct status and code.
+     */
+    @Test
+    void testExceptionCreation() {
+        // Given
+        String message = "Bad request";
+        String code = "BAD_REQUEST_CODE";
+
+        // When
+        BadRequestException ex = new BadRequestException(message, code);
+
+        // Then
+        assertThat(ex.getMessage()).isEqualTo(message);
+        assertThat(ex.getCode()).isEqualTo(code);
+        assertThat(ex.getStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+    }
+}
+```// src/test/java/com/example/exception/GlobalExceptionHandlerTest.java
+```package com.example.exception;
+
+import com.example.dto.error.ErrorResponse;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.context.request.WebRequest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+
+/**
+ * Unit test for the GlobalExceptionHandler.
+ */
+class GlobalExceptionHandlerTest {
+
+    private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+    private final WebRequest mockRequest = mock(WebRequest.class);
+
+    /**
+     * Test handling of custom AppException.
+     */
+    @Test
+    void handleAppException() {
+        // Given
+        NotFoundException ex = new NotFoundException("Resource not found", "NOT_FOUND");
+
+        // When
+        ResponseEntity<ErrorResponse> responseEntity = handler.handleAppException(ex, mockRequest);
+
+        // Then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(responseEntity.getBody()).isNotNull();
+        assertThat(responseEntity.getBody().getCode()).isEqualTo("NOT_FOUND");
+        assertThat(responseEntity.getBody().getMessage()).isEqualTo("Resource not found");
+    }
+
+    /**
+     * Test handling of generic Exception as a fallback.
+     */
+    @Test
+    void handleGlobalException() {
+        // Given
+        Exception ex = new Exception("Generic error");
+
+        // When
+        ResponseEntity<ErrorResponse> responseEntity = handler.handleGlobalException(ex, mockRequest);
+
+        // Then
+        assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(responseEntity.getBody()).isNotNull();
+        assertThat(responseEntity.getBody().getCode()).isEqualTo("INTERNAL_SERVER_ERROR");
+        assertThat(responseEntity.getBody().getMessage()).isEqualTo("An unexpected internal server error occurred.");
+    }
+}
+```// src/test/java/com/example/exception/NotFoundExceptionTest.java
+```package com.example.exception;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the NotFoundException class.
+ */
+class NotFoundExceptionTest {
+
+    /**
+     * Test that the exception is created with the correct status and code.
+     */
+    @Test
+    void testExceptionCreation() {
+        // Given
+        String message = "Resource not found";
+        String code = "RESOURCE_NOT_FOUND";
+
+        // When
+        NotFoundException ex = new NotFoundException(message, code);
+
+        // Then
+        assertThat(ex.getMessage()).isEqualTo(message);
+        assertThat(ex.getCode()).isEqualTo(code);
+        assertThat(ex.getStatus()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+}
+```// src/test/java/com/example/exception/UnauthorizedExceptionTest.java
+```package com.example.exception;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the UnauthorizedException class.
+ */
+class UnauthorizedExceptionTest {
+
+    /**
+     * Test that the exception is created with the correct status and code.
+     */
+    @Test
+    void testExceptionCreation() {
+        // Given
+        String message = "Invalid credentials";
+        String code = "UNAUTHORIZED";
+
+        // When
+        UnauthorizedException ex = new UnauthorizedException(message, code);
+
+        // Then
+        assertThat(ex.getMessage()).isEqualTo(message);
+        assertThat(ex.getCode()).isEqualTo(code);
+        assertThat(ex.getStatus()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+}
+```// src/test/java/com/example/logging/EventLoggerTest.java
+```package com.example.logging;
+
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+/**
+ * Unit test for the EventLogger interface.
+ */
+class EventLoggerTest {
+
+    /**
+     * Test to ensure the interface method can be called on a mock implementation.
+     */
+    @Test
+    void testLogEvent() {
+        // This is a test for an interface, so we just ensure it can be implemented and called.
+        EventLogger mockLogger = message -> {
+            // Mock implementation
+        };
+        assertDoesNotThrow(() -> mockLogger.logEvent("Test event"));
+    }
+}
+```// src/test/java/com/example/logging/KafkaEventLoggerTest.java
+```package com.example.logging;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.junit.jupiter.MockitoExtension;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
+/**
+ * Unit test for the KafkaEventLogger.
+ * Since this class delegates to a static Log4j2 logger, we can only perform a shallow test
+ * to ensure the method call doesn't throw an exception.
+ */
+@ExtendWith(MockitoExtension.class)
+class KafkaEventLoggerTest {
+
+    @InjectMocks
+    private KafkaEventLogger kafkaEventLogger;
+
+    /**
+     * Test that calling logEvent does not throw an exception.
+     */
+    @Test
+    void logEvent_shouldNotThrowException() {
+        assertDoesNotThrow(() -> kafkaEventLogger.logEvent("This is a test event."));
+    }
+}
+```// src/test/java/com/example/logging/LogExecutionTimeTest.java
+```package com.example.logging;
+
+import org.junit.jupiter.api.Test;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the LogExecutionTime annotation.
+ */
+class LogExecutionTimeTest {
+
+    /**
+     * Test to verify the annotation's target and retention policy.
+     */
+    @Test
+    void testAnnotationProperties() {
+        // Given
+        Class<LogExecutionTime> annotationClass = LogExecutionTime.class;
+
+        // When
+        Target target = annotationClass.getAnnotation(Target.class);
+        Retention retention = annotationClass.getAnnotation(Retention.class);
+
+        // Then
+        assertThat(target.value()).containsExactly(ElementType.METHOD);
+        assertThat(retention.value()).isEqualTo(RetentionPolicy.RUNTIME);
+    }
+}
+```// src/test/java/com/example/logging/LoggingAspectTest.java
+```package com.example.logging;
+
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit test for the LoggingAspect.
+ */
+@ExtendWith(MockitoExtension.class)
+class LoggingAspectTest {
+
+    @InjectMocks
+    private LoggingAspect loggingAspect;
+
+    @Mock
+    private ProceedingJoinPoint joinPoint;
+
+    /**
+     * Test that the around advice proceeds with the method execution.
+     * @throws Throwable if the join point throws an exception
+     */
+    @Test
+    void logExecutionTime_shouldProceed() throws Throwable {
+        // Given
+        when(joinPoint.getSignature()).thenReturn(mock(org.aspectj.lang.Signature.class));
+        when(joinPoint.proceed()).thenReturn("result");
+
+        // When
+        Object result = loggingAspect.logExecutionTime(joinPoint);
+
+        // Then
+        verify(joinPoint, times(1)).proceed();
+        assertThat(result).isEqualTo("result");
+    }
+}
+```// src/test/java/com/example/model/LoginAttemptTest.java
+```package com.example.model;
+
+import org.junit.jupiter.api.Test;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the LoginAttempt model.
+ */
+class LoginAttemptTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String id = UUID.randomUUID().toString();
+        String userId = UUID.randomUUID().toString();
+        String otpHash = "hashed-otp";
+        Long expiration = 5L;
+
+        // When
+        LoginAttempt attempt1 = new LoginAttempt();
+        attempt1.setId(id);
+        attempt1.setUserId(userId);
+        attempt1.setOtpHash(otpHash);
+        attempt1.setExpiration(expiration);
+
+        LoginAttempt attempt2 = new LoginAttempt(id, userId, otpHash, expiration);
+
+        // Then
+        assertThat(attempt1.getId()).isEqualTo(id);
+        assertThat(attempt1.getUserId()).isEqualTo(userId);
+        assertThat(attempt1.getOtpHash()).isEqualTo(otpHash);
+        assertThat(attempt1.getExpiration()).isEqualTo(expiration);
+        assertThat(attempt1).isEqualTo(attempt2);
+        assertThat(attempt1.hashCode()).isEqualTo(attempt2.hashCode());
+        assertThat(attempt1.toString()).contains(id);
+    }
+}
+```// src/test/java/com/example/model/MessageTest.java
+```package com.example.model;
+
+import org.junit.jupiter.api.Test;
+import java.time.Instant;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the Message model.
+ */
+class MessageTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String id = UUID.randomUUID().toString();
+        User sender = new User();
+        User recipient = new User();
+        String content = "Hello!";
+        Instant timestamp = Instant.now();
+        boolean isSeen = false;
+        Instant createdAt = Instant.now();
+
+        // When
+        Message message1 = new Message();
+        message1.setId(id);
+        message1.setSender(sender);
+        message1.setRecipient(recipient);
+        message1.setContent(content);
+        message1.setTimestamp(timestamp);
+        message1.setSeen(isSeen);
+        message1.setCreatedAt(createdAt);
+
+        Message message2 = new Message(id, sender, recipient, content, timestamp, isSeen, createdAt);
+
+        // Then
+        assertThat(message1.getId()).isEqualTo(id);
+        assertThat(message1.getSender()).isEqualTo(sender);
+        assertThat(message1.getRecipient()).isEqualTo(recipient);
+        assertThat(message1.getContent()).isEqualTo(content);
+        assertThat(message1.getTimestamp()).isEqualTo(timestamp);
+        assertThat(message1.isSeen()).isEqualTo(isSeen);
+        assertThat(message1.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(message1).isEqualTo(message2);
+        assertThat(message1.hashCode()).isEqualTo(message2.hashCode());
+    }
+}
+```// src/test/java/com/example/model/UserTest.java
+```package com.example.model;
+
+import org.junit.jupiter.api.Test;
+import java.time.Instant;
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the User model.
+ */
+class UserTest {
+
+    /**
+     * Test getters, setters, and constructors.
+     */
+    @Test
+    void testAccessors() {
+        // Given
+        String id = UUID.randomUUID().toString();
+        String phoneNumber = "+1234567890";
+        String password = "hashed-password";
+        Instant now = Instant.now();
+
+        // When
+        User user1 = new User();
+        user1.setId(id);
+        user1.setPhoneNumber(phoneNumber);
+        user1.setPassword(password);
+        user1.setCreatedAt(now);
+        user1.setUpdatedAt(now);
+
+        User user2 = new User(id, phoneNumber, password, now, now);
+
+        // Then
+        assertThat(user1.getId()).isEqualTo(id);
+        assertThat(user1.getPhoneNumber()).isEqualTo(phoneNumber);
+        assertThat(user1.getPassword()).isEqualTo(password);
+        assertThat(user1.getCreatedAt()).isEqualTo(now);
+        assertThat(user1.getUpdatedAt()).isEqualTo(now);
+        assertThat(user1).isEqualTo(user2);
+        assertThat(user1.hashCode()).isEqualTo(user2.hashCode());
+        assertThat(user1.toString()).contains(id);
+    }
+}
+```// src/test/java/com/example/repository/LoginAttemptRepositoryTest.java
+```package com.example.repository;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.data.redis.DataRedisTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the LoginAttemptRepository.
+ * This is a minimal test as Spring Data handles the implementation.
+ */
+@DataRedisTest
+class LoginAttemptRepositoryTest {
+
+    /**
+     * Trivial test to ensure the repository interface is correctly defined.
+     */
+    @Test
+    void repositoryIsAvailable() {
+        // This test mostly serves to check that the application context can be loaded
+        // with the repository bean. If this test runs, the repository is set up correctly.
+        assertThat(true).isTrue();
+    }
+}
+```// src/test/java/com/example/repository/MessageRepositoryTest.java
+```package com.example.repository;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the MessageRepository.
+ * This is a minimal test as Spring Data handles the implementation.
+ */
+@DataJpaTest
+class MessageRepositoryTest {
+
+    /**
+     * Trivial test to ensure the repository interface is correctly defined.
+     */
+    @Test
+    void repositoryIsAvailable() {
+        // This test mostly serves to check that the application context can be loaded
+        // with the repository bean. If this test runs, the repository is set up correctly.
+        assertThat(true).isTrue();
+    }
+}
+```// src/test/java/com/example/repository/UserRepositoryTest.java
+```package com.example.repository;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the UserRepository.
+ * This is a minimal test as Spring Data handles the implementation.
+ */
+@DataJpaTest
+class UserRepositoryTest {
+
+    /**
+     * Trivial test to ensure the repository interface is correctly defined.
+     */
+    @Test
+    void repositoryIsAvailable() {
+        // This test mostly serves to check that the application context can be loaded
+        // with the repository bean. If this test runs, the repository is set up correctly.
+        assertThat(true).isTrue();
+    }
+}
+```// src/test/java/com/example/security/AuthenticatedUserTest.java
+```package com.example.security;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+
+import java.util.UUID;
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the AuthenticatedUser class.
+ */
+class AuthenticatedUserTest {
+
+    /**
+     * Test the constructor and getters.
+     */
+    @Test
+    void testAuthenticatedUserCreation() {
+        // Given
+        String userId = UUID.randomUUID().toString();
+        String username = "+15551234567";
+
+        // When
+        AuthenticatedUser authenticatedUser = new AuthenticatedUser(userId, username);
+
+        // Then
+        assertThat(authenticatedUser.getUserId()).isEqualTo(userId);
+        assertThat(authenticatedUser.getUsername()).isEqualTo(username);
+        assertThat(authenticatedUser.getPassword()).isEqualTo("");
+        assertThat(authenticatedUser.getAuthorities()).containsExactly(new SimpleGrantedAuthority("ROLE_USER"));
+        assertThat(authenticatedUser.isEnabled()).isTrue();
+        assertThat(authenticatedUser.isAccountNonExpired()).isTrue();
+        assertThat(authenticatedUser.isAccountNonLocked()).isTrue();
+        assertThat(authenticatedUser.isCredentialsNonExpired()).isTrue();
+    }
+}
+```// src/test/java/com/example/security/CustomUserDetailsServiceTest.java
+```package com.example.security;
+
+import com.example.model.User;
+import com.example.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
+/**
+ * Unit test for the CustomUserDetailsService.
+ */
+@ExtendWith(MockitoExtension.class)
+class CustomUserDetailsServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private CustomUserDetailsService userDetailsService;
+
+    /**
+     * Test loading a user that exists.
+     */
+    @Test
+    void loadUserByUsername_shouldReturnUserDetails_whenUserExists() {
+        // Given
+        String userId = UUID.randomUUID().toString();
+        User user = new User(userId, "+12345", "pass", null, null);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        // When
+        UserDetails userDetails = userDetailsService.loadUserByUsername(userId);
+
+        // Then
+        assertThat(userDetails).isInstanceOf(AuthenticatedUser.class);
+        assertThat(((AuthenticatedUser) userDetails).getUserId()).isEqualTo(userId);
+        assertThat(userDetails.getUsername()).isEqualTo(user.getPhoneNumber());
+    }
+
+    /**
+     * Test loading a user that does not exist.
+     */
+    @Test
+    void loadUserByUsername_shouldThrowException_whenUserDoesNotExist() {
+        // Given
+        String userId = UUID.randomUUID().toString();
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        // When & Then
+        assertThatThrownBy(() -> userDetailsService.loadUserByUsername(userId))
+            .isInstanceOf(UsernameNotFoundException.class)
+            .hasMessage("User not found with id: " + userId);
+    }
+}
+```// src/test/java/com/example/security/JwtAuthenticationFilterTest.java
+```package com.example.security;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetailsService;
+
+import java.io.IOException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
+
+/**
+ * Unit test for the JwtAuthenticationFilter.
+ */
+@ExtendWith(MockitoExtension.class)
+class JwtAuthenticationFilterTest {
+
+    @Mock
+    private JwtTokenProvider tokenProvider;
+
+    @Mock
+    private UserDetailsService userDetailsService;
+
+    @InjectMocks
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Mock
+    private HttpServletRequest request;
+
+    @Mock
+    private HttpServletResponse response;
+
+    @Mock
+    private FilterChain filterChain;
+
+    /**
+     * Test the filter logic when a valid JWT is present.
+     */
+    @Test
+    void doFilterInternal_withValidToken_shouldSetAuthentication() throws ServletException, IOException {
+        // Given
+        String token = "valid.jwt.token";
+        String userId = "user123";
+        AuthenticatedUser userDetails = new AuthenticatedUser(userId, "+12345");
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(tokenProvider.validateToken(token)).thenReturn(true);
+        when(tokenProvider.getUserIdFromJWT(token)).thenReturn(userId);
+        when(userDetailsService.loadUserByUsername(userId)).thenReturn(userDetails);
+
+        // When
+        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+        // Then
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNotNull();
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getPrincipal()).isEqualTo(userDetails);
+        verify(filterChain).doFilter(request, response);
+    }
+
+    /**
+     * Test the filter logic when no JWT is present.
+     */
+    @Test
+    void doFilterInternal_withoutToken_shouldNotSetAuthentication() throws ServletException, IOException {
+        // Given
+        when(request.getHeader("Authorization")).thenReturn(null);
+
+        // When
+        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+        // Then
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(filterChain).doFilter(request, response);
+    }
+
+    /**
+     * Test the filter logic with an invalid JWT.
+     */
+    @Test
+    void doFilterInternal_withInvalidToken_shouldNotSetAuthentication() throws ServletException, IOException {
+        // Given
+        String token = "invalid.jwt.token";
+        when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
+        when(tokenProvider.validateToken(token)).thenReturn(false);
+
+        // When
+        jwtAuthenticationFilter.doFilterInternal(request, response, filterChain);
+
+        // Then
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+        verify(filterChain).doFilter(request, response);
+    }
+}
+```// src/test/java/com/example/security/JwtTokenProviderTest.java
+```package com.example.security;
+
+import com.example.model.User;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for the JwtTokenProvider.
+ */
+class JwtTokenProviderTest {
+
+    private JwtTokenProvider jwtTokenProvider;
+
+    @BeforeEach
+    void setUp() {
+        jwtTokenProvider = new JwtTokenProvider();
+        // Use a real, long secret for testing to comply with JJWT requirements
+        String secret = "this-is-a-very-secure-secret-key-for-testing-purposes-only-do-not-use-in-production";
+        ReflectionTestUtils.setField(jwtTokenProvider, "jwtSecret", secret);
+        ReflectionTestUtils.setField(jwtTokenProvider, "jwtAccessExpirationInMs", 3600000L);
+        ReflectionTestUtils.setField(jwtTokenProvider, "jwtRefreshExpirationInMs", 86400000L);
+        jwtTokenProvider.init();
+    }
+
+    /**
+     * Test token generation and validation.
+     */
+    @Test
+    void generateAndValidateToken_shouldBeSuccessful() {
+        // Given
+        User user = new User(UUID.randomUUID().toString(), "+123", "pass", null, null);
+
+        // When
+        JwtTokenProvider.TokenPair tokenPair = jwtTokenProvider.generateTokenPair(user);
+        String accessToken = tokenPair.accessToken();
+        
+        boolean isValid = jwtTokenProvider.validateToken(accessToken);
+        String userIdFromToken = jwtTokenProvider.getUserIdFromJWT(accessToken);
+
+        // Then
+        assertThat(accessToken).isNotNull();
+        assertThat(tokenPair.refreshToken()).isNotNull();
+        assertThat(isValid).isTrue();
+        assertThat(userIdFromToken).isEqualTo(user.getId());
+    }
+
+    /**
+     * Test validation of an invalid (malformed) token.
+     */
+    @Test
+    void validateToken_withInvalidToken_shouldReturnFalse() {
+        // When
+        boolean isValid = jwtTokenProvider.validateToken("some.invalid.token");
+
+        // Then
+        assertThat(isValid).isFalse();
+    }
+}
+```// src/test/java/com/example/security/SecurityConfigTest.java
+```package com.example.security;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Unit test for SecurityConfig.
+ */
+@SpringBootTest(classes = {SecurityConfig.class, JwtAuthenticationFilter.class, CustomUserDetailsService.class, JwtTokenProvider.class})
+class SecurityConfigTest {
+
+    @Autowired
+    private ApplicationContext context;
+
+    /**
+     * Test if the SecurityFilterChain bean is correctly created and loaded into the context.
+     */
+    @Test
+    void securityFilterChainBeanIsLoaded() {
+        assertThat(context.getBean("securityFilterChain")).isNotNull();
+    }
+
+    /**
+     * Test if the PasswordEncoder bean is correctly created.
+     */
+    @Test
+    void passwordEncoderBeanIsLoaded() {
+        assertThat(context.getBean("passwordEncoder")).isNotNull();
+    }
+}
+```// src/test/java/com/example/service/AuthServiceTest.java
+```package com.example.service;
+
+import com.example.dto.auth.InitiateLoginRequest;
+import com.example.dto.auth.VerifyLoginRequest;
+import com.example.dto.auth.VerifyLoginResponse;
+import com.example.exception.BadRequestException;
+import com.example.exception.NotFoundException;
+import com.example.exception.UnauthorizedException;
+import com.example.logging.EventLogger;
+import com.example.model.LoginAttempt;
+import com.example.model.User;
+import com.example.repository.LoginAttemptRepository;
+import com.example.security.JwtTokenProvider;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
+
+    @Mock
+    private UserService userService;
+    @Mock
+    private OtpService otpService;
+    @Mock
+    private LoginAttemptRepository loginAttemptRepository;
+    @Mock
+    private JwtTokenProvider tokenProvider;
+    @Mock
+    private PasswordEncoder passwordEncoder;
+    @Mock
+    private EventLogger eventLogger;
+
+    @InjectMocks
+    private AuthService authService;
+
+    @Test
+    void initiateLogin_withValidCredentials_shouldReturnLoginAttemptId() {
+        InitiateLoginRequest request = new InitiateLoginRequest("+123", "password");
+        User user = new User("userId", "+123", "encodedPassword", null, null);
+        String loginAttemptId = UUID.randomUUID().toString();
+
+        when(userService.findByPhoneNumber("+123")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "encodedPassword")).thenReturn(true);
+        when(otpService.generateAndSendOtp(user)).thenReturn(loginAttemptId);
+
+        String result = authService.initiateLogin(request);
+
+        assertThat(result).isEqualTo(loginAttemptId);
+        verify(eventLogger).logEvent("Login initiated for user: userId");
+    }
+
+    @Test
+    void initiateLogin_withInvalidUser_shouldThrowUnauthorizedException() {
+        InitiateLoginRequest request = new InitiateLoginRequest("+123", "password");
+        when(userService.findByPhoneNumber("+123")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.initiateLogin(request))
+            .isInstanceOf(UnauthorizedException.class);
+    }
+
+    @Test
+    void initiateLogin_withInvalidPassword_shouldThrowUnauthorizedException() {
+        InitiateLoginRequest request = new InitiateLoginRequest("+123", "wrongPassword");
+        User user = new User("userId", "+123", "encodedPassword", null, null);
+
+        when(userService.findByPhoneNumber("+123")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongPassword", "encodedPassword")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.initiateLogin(request))
+            .isInstanceOf(UnauthorizedException.class);
+        verify(eventLogger).logEvent("Failed login attempt for user: userId");
+    }
+
+    @Test
+    void verifyLogin_withValidOtp_shouldReturnTokens() {
+        String loginAttemptId = UUID.randomUUID().toString();
+        String userId = UUID.randomUUID().toString();
+        VerifyLoginRequest request = new VerifyLoginRequest(loginAttemptId, "123456");
+        LoginAttempt attempt = new LoginAttempt(loginAttemptId, userId, "encodedOtp", 5L);
+        User user = new User(userId, "+123", "pass", null, null);
+        JwtTokenProvider.TokenPair tokens = new JwtTokenProvider.TokenPair("access", "refresh");
+
+        when(loginAttemptRepository.findById(loginAttemptId)).thenReturn(Optional.of(attempt));
+        when(passwordEncoder.matches("123456", "encodedOtp")).thenReturn(true);
+        when(userService.findById(userId)).thenReturn(Optional.of(user));
+        when(tokenProvider.generateTokenPair(user)).thenReturn(tokens);
+
+        VerifyLoginResponse response = authService.verifyLogin(request);
+
+        assertThat(response.getAccessToken()).isEqualTo("access");
+        assertThat(response.getRefreshToken()).isEqualTo("refresh");
+        verify(loginAttemptRepository).deleteById(loginAttemptId);
+        verify(eventLogger).logEvent("Login successful for user: " + userId);
+    }
+
+    @Test
+    void verifyLogin_withInvalidAttemptId_shouldThrowNotFoundException() {
+        VerifyLoginRequest request = new VerifyLoginRequest("invalidId", "123456");
+        when(loginAttemptRepository.findById("invalidId")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.verifyLogin(request))
+            .isInstanceOf(NotFoundException.class);
+    }
+
+    @Test
+    void verifyLogin_withInvalidOtp_shouldThrowBadRequestException() {
+        String loginAttemptId = UUID.randomUUID().toString();
+        VerifyLoginRequest request = new VerifyLoginRequest(loginAttemptId, "wrongOtp");
+        LoginAttempt attempt = new LoginAttempt(loginAttemptId, "userId", "encodedOtp", 5L);
+
+        when(loginAttemptRepository.findById(loginAttemptId)).thenReturn(Optional.of(attempt));
+        when(passwordEncoder.matches("wrongOtp", "encodedOtp")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.verifyLogin(request))
+            .isInstanceOf(BadRequestException.class);
+        verify(eventLogger).logEvent("Invalid OTP for login attempt: " + loginAttemptId);
+    }
+}
+```// src/test/java/com/example/service/MessageServiceTest.java
+```package com.example.service;
+
+import com.example.dto.message.MessageResponse;
+import com.example.dto.message.SendMessageRequest;
+import com.example.exception.BadRequestException;
+import com.example.exception.NotFoundException;
+import com.example.logging.EventLogger;
+import com.example.model.Message;
+import com.example.model.User;
+import com.example.repository.MessageRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+
+import java.time.Instant;
+import java.util.Collections;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class MessageServiceTest {
+
+    @Mock
+    private MessageRepository messageRepository;
+    @Mock
+    private UserService userService;
+    @Mock
+    private EventLogger eventLogger;
+
+    @InjectMocks
+    private MessageService messageService;
+
+    @Test
+    void createMessage_withValidData_shouldReturnMessageResponse() {
+        String senderId = UUID.randomUUID().toString();
+        String recipientId = UUID.randomUUID().toString();
+        SendMessageRequest request = new SendMessageRequest(recipientId, "Hello");
+        User sender = new User(senderId, "s_phone", "pass", null, null);
+        User recipient = new User(recipientId, "r_phone", "pass", null, null);
+        Message message = new Message(UUID.randomUUID().toString(), sender, recipient, "Hello", Instant.now(), false, null);
+
+        when(userService.findById(senderId)).thenReturn(Optional.of(sender));
+        when(userService.findById(recipientId)).thenReturn(Optional.of(recipient));
+        when(messageRepository.save(any(Message.class))).thenReturn(message);
+
+        MessageResponse response = messageService.createMessage(senderId, request);
+
+        assertThat(response).isNotNull();
+        assertThat(response.getContent()).isEqualTo("Hello");
+        assertThat(response.getSenderId()).isEqualTo(senderId);
+        verify(eventLogger).logEvent(String.format("Message sent from %s to %s", senderId, recipientId));
+    }
+
+    @Test
+    void createMessage_toSelf_shouldThrowBadRequestException() {
+        String userId = UUID.randomUUID().toString();
+        SendMessageRequest request = new SendMessageRequest(userId, "Hello");
+
+        assertThatThrownBy(() -> messageService.createMessage(userId, request))
+            .isInstanceOf(BadRequestException.class)
+            .hasMessage("Cannot send a message to yourself.");
+    }
+
+    @Test
+    void createMessage_withNonexistentRecipient_shouldThrowNotFoundException() {
+        String senderId = UUID.randomUUID().toString();
+        String recipientId = UUID.randomUUID().toString();
+        SendMessageRequest request = new SendMessageRequest(recipientId, "Hello");
+        User sender = new User(senderId, "s_phone", "pass", null, null);
+
+        when(userService.findById(senderId)).thenReturn(Optional.of(sender));
+        when(userService.findById(recipientId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> messageService.createMessage(senderId, request))
+            .isInstanceOf(NotFoundException.class)
+            .hasMessage("Recipient not found.");
+    }
+
+    @Test
+    void getMessagesForUser_shouldReturnPageOfMessages() {
+        String userId = UUID.randomUUID().toString();
+        PageRequest pageable = PageRequest.of(0, 10);
+        User user = new User(userId, "phone", "pass", null, null);
+        Message message = new Message(UUID.randomUUID().toString(), user, new User(), "Content", Instant.now(), false, null);
+        Page<Message> messagePage = new PageImpl<>(Collections.singletonList(message));
+
+        when(messageRepository.findMessagesForUser(userId, null, pageable)).thenReturn(messagePage);
+
+        Page<MessageResponse> result = messageService.getMessagesForUser(userId, null, pageable);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.getContent().get(0).getContent()).isEqualTo("Content");
+    }
+}
+```// src/test/java/com/example/service/OtpServiceTest.java
+```package com.example.service;
+
+import com.example.exception.AppException;
+import com.example.logging.EventLogger;
+import com.example.model.LoginAttempt;
+import com.example.model.User;
+import com.example.repository.LoginAttemptRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OtpServiceTest {
+
+    @Mock
+    private LoginAttemptRepository loginAttemptRepository;
+    @Mock
+    private PasswordEncoder passwordEncoder;
+    @Mock
+    private EventLogger eventLogger;
+
+    private OtpService otpService;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize service with test values
+        otpService = new OtpService(loginAttemptRepository, passwordEncoder, eventLogger, 6, 5L);
+    }
+
+    @Test
+    void generateAndSendOtp_shouldStoreAndReturnAttemptId() {
+        User user = new User(UUID.randomUUID().toString(), "+1234567890", "pass", null, null);
+        String encodedOtp = "encoded-otp";
+        when(passwordEncoder.encode(any(String.class))).thenReturn(encodedOtp);
+
+        String loginAttemptId = otpService.generateAndSendOtp(user);
+
+        assertThat(loginAttemptId).isNotNull();
+        ArgumentCaptor<LoginAttempt> captor = ArgumentCaptor.forClass(LoginAttempt.class);
+        verify(loginAttemptRepository).save(captor.capture());
+        LoginAttempt savedAttempt = captor.getValue();
+        assertThat(savedAttempt.getId()).isEqualTo(loginAttemptId);
+        assertThat(savedAttempt.getUserId()).isEqualTo(user.getId());
+        assertThat(savedAttempt.getOtpHash()).isEqualTo(encodedOtp);
+        assertThat(savedAttempt.getExpiration()).isEqualTo(5L);
+        verify(eventLogger).logEvent("OTP sent to " + user.getPhoneNumber());
+    }
+}
+```// src/test/java/com/example/service/UserServiceTest.java
+```package com.example.service;
+
+import com.example.model.User;
+import com.example.repository.UserRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserService userService;
+
+    @Test
+    void findByPhoneNumber_shouldReturnUser_whenFound() {
+        String phoneNumber = "+1234567890";
+        User user = new User(UUID.randomUUID().toString(), phoneNumber, "pass", null, null);
+        when(userRepository.findByPhoneNumber(phoneNumber)).thenReturn(Optional.of(user));
+
+        Optional<User> foundUser = userService.findByPhoneNumber(phoneNumber);
+
+        assertThat(foundUser).isPresent();
+        assertThat(foundUser.get().getPhoneNumber()).isEqualTo(phoneNumber);
+    }
+
+    @Test
+    void findByPhoneNumber_shouldReturnEmpty_whenNotFound() {
+        String phoneNumber = "+1234567890";
+        when(userRepository.findByPhoneNumber(phoneNumber)).thenReturn(Optional.empty());
+
+        Optional<User> foundUser = userService.findByPhoneNumber(phoneNumber);
+
+        assertThat(foundUser).isNotPresent();
+    }
+
+    @Test
+    void findById_shouldReturnUser_whenFound() {
+        String id = UUID.randomUUID().toString();
+        User user = new User(id, "phone", "pass", null, null);
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        Optional<User> foundUser = userService.findById(id);
+
+        assertThat(foundUser).isPresent();
+        assertThat(foundUser.get().getId()).isEqualTo(id);
+    }
+
+    @Test
+    void findById_shouldReturnEmpty_whenNotFound() {
+        String id = UUID.randomUUID().toString();
+        when(userRepository.findById(id)).thenReturn(Optional.empty());
+
+        Optional<User> foundUser = userService.findById(id);
+
+        assertThat(foundUser).isNotPresent();
+    }
+}
+```
